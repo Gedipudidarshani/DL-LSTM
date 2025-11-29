@@ -49,24 +49,30 @@ Evaluate model accuracy, plot loss curves, and visualize predictions on a sample
 ```python
 # Model definition
 class BiLSTMTagger(nn.Module):
-  def __init__(self,vocab_size,tarset_size,embedding_dim=50,hidden_dim=100):
-    super(BiLSTMTagger,self).__init__()
-    self.embedding=nn.Embedding(vocab_size,embedding_dim)
-    self.dropout=nn.Dropout(0.1)
-    self.lstm=(nn.LSTM(embedding_dim,hidden_dim,batch_first=True,bidirectional=True))
-    self.fc=nn.Linear(hidden_dim*2,tarset_size)
-  def forward(self,x):
-    x=self.embedding(x)
-    x=self.dropout(x)
-    x,_=self.lstm(x)
-    return self.fc(x)
+   #Include your code here
+  def __init__(self, vocab_size, tagset_size, embedding_dim=128, hidden_dim=64):
+    super(BiLSTMTagger, self).__init__()
+    self.embedding = nn.Embedding(vocab_size, embedding_dim, padding_idx=word2idx["ENDPAD"])
+    self.lstm = nn.LSTM(embedding_dim, hidden_dim, batch_first=True, bidirectional=True)
+    self.fc = nn.Linear(hidden_dim * 2, tagset_size)
 
+
+  def forward(self, input_ids):
+    x = self.embedding(input_ids)
+    x, _ = self.lstm(x)
+    x = self.fc(x)
+    return x
+
+model = BiLSTMTagger(len(word2idx) + 1, len(tag2idx)).to(device)
+loss_fn = nn.CrossEntropyLoss(ignore_index=tag2idx["O"])
+optimizer =torch.optim.Adam(model.parameters(), lr=0.001)
 
 # Training and Evaluation Functions
 def train_model(model, train_loader, test_loader, loss_fn, optimizer, epochs=3):
-    train_losses, val_losses = [], []
+    # Include the training and evaluation functions
+    train_losses = []
+    val_losses = []
     for epoch in range(epochs):
-        # Training
         model.train()
         total_loss = 0
         for batch in train_loader:
@@ -75,29 +81,27 @@ def train_model(model, train_loader, test_loader, loss_fn, optimizer, epochs=3):
 
             optimizer.zero_grad()
             outputs = model(input_ids)
-            loss = loss_fn(outputs.view(-1, len(tag2idx)), labels.view(-1))
+            loss = loss_fn(outputs.view(-1, outputs.shape[-1]), labels.view(-1))
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
-
-        train_losses.append(total_loss)
-
+        train_losses.append(total_loss / len(train_loader))
         # Validation
         model.eval()
         val_loss = 0
         with torch.no_grad():
             for batch in test_loader:
                 input_ids = batch["input_ids"].to(device)
-                labels = batch["labels"].to(device)   # FIXED
+                labels = batch["labels"].to(device)
                 outputs = model(input_ids)
-                loss = loss_fn(outputs.view(-1, len(tag2idx)), labels.view(-1))
-                val_loss += loss.item()  # FIXED
+                loss = loss_fn(outputs.view(-1, outputs.shape[-1]), labels.view(-1))
+                val_loss += loss.item()
+        val_losses.append(val_loss / len(test_loader))
 
-        val_losses.append(val_loss)
-        print(f"Epoch {epoch+1}: Train Loss = {total_loss:.4f}, Val Loss = {val_loss:.4f}")
+        print(f"Epoch {epoch+1}/{epochs}, Train Loss: {train_losses[-1]:.4f}, Val Loss: {val_losses[-1]:.4f}")
+
 
     return train_losses, val_losses
-
 
 
 ```
@@ -105,11 +109,11 @@ def train_model(model, train_loader, test_loader, loss_fn, optimizer, epochs=3):
 ### OUTPUT
 
 ## Loss Vs Epoch Plot
-
-<img width="620" height="502" alt="image" src="https://github.com/user-attachments/assets/d4269021-e0f1-4033-90c3-31a0f7fc7acf" />
+<img width="689" height="551" alt="image" src="https://github.com/user-attachments/assets/a27e71f2-b3fc-4795-8fba-3a7b46724df7" />
 
 ### Sample Text Prediction
-<img width="355" height="350" alt="image" src="https://github.com/user-attachments/assets/8abf39b6-cfec-4e1f-8862-ef7d26bb4c7b" />
+<img width="393" height="468" alt="image" src="https://github.com/user-attachments/assets/389d3bb3-59f7-46bf-ad1a-2220ea33178b" />
+
 
 
 ## RESULT
